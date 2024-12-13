@@ -99,6 +99,14 @@ pub fn is_executed_from_path() -> bool {
 // Type alias for the user-defined confirmation function
 pub type UserInputConfirmFn = Box<dyn FnMut(&str) -> bool>;
 
+fn default_user_confirm(prompt: &str) -> bool {
+    let mut response = String::new();
+    print!("{}", prompt); // Print prompt
+    io::stdout().flush().unwrap(); // Flush to ensure the prompt is displayed
+    io::stdin().read_line(&mut response).unwrap();
+    response.trim().to_lowercase() == "y"
+}
+
 pub fn relaunch_program<F>(crate_name: &str, user_confirm: Option<F>) -> Result<()>
 where
     F: FnMut(&str) -> bool + 'static,
@@ -138,50 +146,42 @@ where
             Box::new(default_user_confirm)
         };
 
-        // Use the user-provided or default confirmation function
-        print!("A new version {} is available. Would you like to install it? (y/n): ", latest_version);
-        io::stdout().flush().unwrap();
-
-        let mut response = String::new();
-        io::stdin().read_line(&mut response).unwrap();
-
-        if confirm_fn(&response.trim()) {
-            // Install the new version (e.g., using cargo install or similar method)
-            let mut install_command = Command::new("cargo")
-                .arg("install")
-                .arg(crate_name) // Install the crate
-                .spawn()
-                .context("Failed to run cargo install")?;
-
-            // Wait for the install process to complete
-            let _ = install_command.wait().context("Failed to wait for cargo install")?;
-
-            // After installing, relaunch the program
-            let args: Vec<String> = env::args().collect();
-            let child = Command::new(&args[0])
-                .args(&args[1..]) // Pass all the arguments to the new process
-                .spawn();
-
-            match child {
-                Ok(_) => {
-                    exit(0); // Exit the old process immediately after launching the new one
-                },
-                Err(e) => {
-                    return Err(anyhow::anyhow!("Failed to relaunch the program: {}", e).into());
-                }
-            }
-        } else {
-            println!("You chose not to update.");
+        // Prompt the user for update confirmation
+        let prompt = format!("A new version {} is available. Would you like to install it? (y/n): ", latest_version);
+        if !confirm_fn(&prompt) {
+            println!("User chose not to update.");
+            return Ok(()); // Exit if the user doesn't want to update
         }
-    } else {
-        println!("You are already using the latest version.");
+
+        // Proceed with the update process if the user confirms
+        println!("Proceeding with update...");
+
+        // Run the `cargo install` command to install the new version
+        let mut install_command = Command::new("cargo")
+            .arg("install")
+            .arg(crate_name) // Install the crate
+            .spawn()
+            .context("Failed to run cargo install")?;
+
+        // Wait for the install process to complete
+        let _ = install_command.wait().context("Failed to wait for cargo install")?;
+
+        // After installing, relaunch the program
+        let args: Vec<String> = env::args().collect();
+        let child = Command::new(&args[0])
+            .args(&args[1..]) // Pass all the arguments to the new process
+            .spawn();
+
+        match child {
+            Ok(_) => {
+                exit(0); // Exit the old process immediately after launching the new one
+            },
+            Err(e) => {
+                return Err(anyhow::anyhow!("Failed to relaunch the program: {}", e).into());
+            }
+        }
     }
 
     Ok(())
-}
-
-// Default confirmation function
-fn default_user_confirm(response: &str) -> bool {
-    response.trim().to_lowercase() == "y"
 }
 
