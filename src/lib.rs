@@ -49,7 +49,7 @@ fn create_lock_file(lock_file_path: &Path) -> io::Result<()> {
 fn get_latest_version_from_crates_io(crate_name: &str) -> Result<String> {
     let url = format!("https://crates.io/api/v1/crates/{}/versions", crate_name);
 
-    eprintln!("Fetching latest version from: {}", url); // Debug log
+    //eprintln!("Fetching latest version from: {}", url);
 
     // Create a client with a User-Agent header
     let client = reqwest::blocking::Client::new();
@@ -60,17 +60,17 @@ fn get_latest_version_from_crates_io(crate_name: &str) -> Result<String> {
         .context("Failed to fetch from crates.io")?;
 
     let status = response.status();
-    eprintln!("Response status: {}", status); // Debug log
+    //eprintln!("Response status: {}", status);
 
     if !status.is_success() {
         return Err(anyhow::anyhow!("Failed to fetch crate info: HTTP {}", status));
     }
 
     let body = response.text().context("Failed to read response body")?;
-    eprintln!("Response body: {}", body); // Debug log
+    //eprintln!("Response body: {}", body);
 
     let json: Value = serde_json::from_str(&body).context("Failed to parse JSON response")?;
-    eprintln!("Parsed JSON: {:?}", json); // Debug log
+    //eprintln!("Parsed JSON: {:?}", json);
 
     let latest_version = json["versions"]
         .as_array()
