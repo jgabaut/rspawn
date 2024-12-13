@@ -1,0 +1,14 @@
+[package]
+name = "rspawn"
+description = "A crate to fetch latest from crates.io and update your binary"
+version = "0.0.0"
+edition = "2021"
+license = "GPL-3.0-only"
+repository = "https://github.com/jgabaut/rspawn"
+readme = "README.md"
+
+[dependencies]
+anyhow = "1.0.94"
+reqwest = { version = "0.12.9", features = ["blocking"] }
+serde_json = "1.0.133"
+uuid = { version = "1.11.0", features = ["v4"] }
