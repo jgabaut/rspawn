@@ -99,7 +99,12 @@ pub fn is_executed_from_path() -> bool {
 // Type alias for the user-defined confirmation function
 pub type UserInputConfirmFn = Box<dyn FnMut(&str) -> bool>;
 
-pub fn relaunch_program<F>(crate_name: &str, user_confirm: Option<F>) -> Result<()>
+pub fn relaunch_program<F>(
+    crate_name: &str,
+    active_features: Option<Vec<String>>,
+    user_confirm: Option<F>,
+    check_if_executed_from_PATH: bool
+) -> Result<()>
 where
     F: FnMut(&str) -> bool + 'static,
 {
@@ -120,7 +125,7 @@ where
     };
 
     // Check if the program was executed from PATH
-    if !is_executed_from_path() {
+    if check_if_executed_from_PATH && !is_executed_from_path() {
         return Err(anyhow::anyhow!("Program must be executed from PATH, not from a full or relative path.").into());
     }
 
@@ -133,7 +138,7 @@ where
     if latest_version != current_version {
         // Determine the confirmation function
         let mut confirm_fn: Box<dyn FnMut(&str) -> bool> = if let Some(mut custom_confirm) = user_confirm {
-            Box::new(move |prompt| custom_confirm(prompt))
+            Box::new(move |reply| custom_confirm(reply))
         } else {
             Box::new(default_user_confirm)
         };
@@ -147,14 +152,22 @@ where
 
         if confirm_fn(&response.trim()) {
             // Install the new version (e.g., using cargo install or similar method)
-            let mut install_command = Command::new("cargo")
-                .arg("install")
-                .arg(crate_name) // Install the crate
-                .spawn()
-                .context("Failed to run cargo install")?;
+            let mut install_command = {
+                let mut cmd = Command::new("cargo");
+                cmd.arg("install").arg(crate_name);
+
+                if let Some(features) = active_features {
+                    if !features.is_empty() {
+                        cmd.args(features.iter().flat_map(|f| ["--features", f]));
+                    }
+                }
+                cmd // Return the fully configured `Command`
+            };
+            let mut child = install_command.spawn()
+                .context("Failed to run cargo install")?; // Install the crate
 
             // Wait for the install process to complete
-            let _ = install_command.wait().context("Failed to wait for cargo install")?;
+            let _ = child.wait().context("Failed to wait for cargo install")?;
 
             // After installing, relaunch the program
             let args: Vec<String> = env::args().collect();

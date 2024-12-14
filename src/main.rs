@@ -18,7 +18,9 @@ fn main() {
 
     let custom_confirm = |response: &str| response.trim().to_lowercase() == "yes";
 
-    if let Err(e) = relaunch_program(crate_name, Some(custom_confirm)) {
+    let check_if_executed_from_PATH = true;
+
+    if let Err(e) = relaunch_program(crate_name, None, Some(custom_confirm), check_if_executed_from_PATH) {
         eprintln!("Error: {}", e);
     }
 }
