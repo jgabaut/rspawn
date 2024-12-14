@@ -26,7 +26,7 @@ fn main() {
     };
 
     #[allow(non_snake_case)]
-    let check_if_executed_from_PATH = false;
+    let check_if_executed_from_PATH = true;
 
     if let Err(e) = relaunch_program(crate_name, None, Some(custom_confirm), check_if_executed_from_PATH) {
         eprintln!("Error: {}", e);
