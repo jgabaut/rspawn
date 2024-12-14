@@ -82,17 +82,27 @@ fn get_latest_version_from_crates_io(crate_name: &str) -> Result<String> {
 }
 
 pub fn is_executed_from_path() -> bool {
-    let exe_path = env::current_exe().unwrap_or_default();
+    let exe_path = env::current_exe().unwrap_or_else(|_| PathBuf::new());
+
+    // If the program was executed with a relative or absolute path (e.g., ./bum or /usr/local/bin/bum),
+    // we should not consider it as being from the PATH.
+    if exe_path.is_relative() || exe_path.parent().is_none() {
+        return false;
+    }
+
+    // Extract the executable name
     if let Some(exe_name) = exe_path.file_name() {
         let exe_name = exe_name.to_string_lossy();
 
-        for dir in env::var("PATH").unwrap_or_default().split(':') {
+        // Loop through directories in the PATH
+        for dir in env::var("PATH").unwrap_or_else(|_| String::new()).split(':') {
             let full_path = Path::new(&dir).join(&*exe_name);
             if full_path.exists() {
                 return true; // Executable is found in PATH
             }
         }
     }
+
     false // Executed from a full or relative path
 }
 
