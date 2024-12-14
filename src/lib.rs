@@ -13,7 +13,7 @@
  */
 use std::env;
 use std::fs::{File, remove_file};
-use std::io::{self, Write};
+use std::io;
 use std::process::{Command, exit};
 use std::path::{Path, PathBuf};
 use serde_json::Value;
@@ -82,24 +82,40 @@ fn get_latest_version_from_crates_io(crate_name: &str) -> Result<String> {
 }
 
 pub fn is_executed_from_path() -> bool {
-    let exe_path = env::current_exe().unwrap_or_default();
+    let exe_path = env::current_exe().unwrap_or_else(|_| PathBuf::new());
+
+    // If the program was executed with a relative or absolute path (e.g., ./bum or /usr/local/bin/bum),
+    // we should not consider it as being from the PATH.
+    if exe_path.is_relative() || exe_path.parent().is_none() {
+        return false;
+    }
+
+    // Extract the executable name
     if let Some(exe_name) = exe_path.file_name() {
         let exe_name = exe_name.to_string_lossy();
 
-        for dir in env::var("PATH").unwrap_or_default().split(':') {
+        // Loop through directories in the PATH
+        for dir in env::var("PATH").unwrap_or_else(|_| String::new()).split(':') {
             let full_path = Path::new(&dir).join(&*exe_name);
             if full_path.exists() {
                 return true; // Executable is found in PATH
             }
         }
     }
+
     false // Executed from a full or relative path
 }
 
 // Type alias for the user-defined confirmation function
 pub type UserInputConfirmFn = Box<dyn FnMut(&str) -> bool>;
 
-pub fn relaunch_program<F>(crate_name: &str, user_confirm: Option<F>) -> Result<()>
+pub fn relaunch_program<F>(
+    crate_name: &str,
+    active_features: Option<Vec<String>>,
+    user_confirm: Option<F>,
+    #[allow(non_snake_case)]
+    check_if_executed_from_PATH: bool
+) -> Result<()>
 where
     F: FnMut(&str) -> bool + 'static,
 {
@@ -120,7 +136,7 @@ where
     };
 
     // Check if the program was executed from PATH
-    if !is_executed_from_path() {
+    if check_if_executed_from_PATH && !is_executed_from_path() {
         return Err(anyhow::anyhow!("Program must be executed from PATH, not from a full or relative path.").into());
     }
 
@@ -133,28 +149,31 @@ where
     if latest_version != current_version {
         // Determine the confirmation function
         let mut confirm_fn: Box<dyn FnMut(&str) -> bool> = if let Some(mut custom_confirm) = user_confirm {
-            Box::new(move |prompt| custom_confirm(prompt))
+            Box::new(move |version| custom_confirm(version))
         } else {
             Box::new(default_user_confirm)
         };
 
         // Use the user-provided or default confirmation function
-        print!("A new version {} is available. Would you like to install it? (y/n): ", latest_version);
-        io::stdout().flush().unwrap();
 
-        let mut response = String::new();
-        io::stdin().read_line(&mut response).unwrap();
-
-        if confirm_fn(&response.trim()) {
+        if confirm_fn(&latest_version) {
             // Install the new version (e.g., using cargo install or similar method)
-            let mut install_command = Command::new("cargo")
-                .arg("install")
-                .arg(crate_name) // Install the crate
-                .spawn()
-                .context("Failed to run cargo install")?;
+            let mut install_command = {
+                let mut cmd = Command::new("cargo");
+                cmd.arg("install").arg(crate_name);
+
+                if let Some(features) = active_features {
+                    if !features.is_empty() {
+                        cmd.args(features.iter().flat_map(|f| ["--features", f]));
+                    }
+                }
+                cmd // Return the fully configured `Command`
+            };
+            let mut child = install_command.spawn()
+                .context("Failed to run cargo install")?; // Install the crate
 
             // Wait for the install process to complete
-            let _ = install_command.wait().context("Failed to wait for cargo install")?;
+            let _ = child.wait().context("Failed to wait for cargo install")?;
 
             // After installing, relaunch the program
             let args: Vec<String> = env::args().collect();
@@ -181,7 +200,11 @@ where
 }
 
 // Default confirmation function
-fn default_user_confirm(response: &str) -> bool {
+fn default_user_confirm(version: &str) -> bool {
+    println!("A new version {} is available. Would you like to install it? (y/n): ", version);
+
+    let mut response = String::new();
+    io::stdin().read_line(&mut response).unwrap();
     response.trim().to_lowercase() == "y"
 }
 
