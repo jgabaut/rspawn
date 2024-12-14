@@ -13,7 +13,7 @@
  */
 use std::env;
 use std::fs::{File, remove_file};
-use std::io::{self, Write};
+use std::io;
 use std::process::{Command, exit};
 use std::path::{Path, PathBuf};
 use serde_json::Value;
@@ -103,6 +103,7 @@ pub fn relaunch_program<F>(
     crate_name: &str,
     active_features: Option<Vec<String>>,
     user_confirm: Option<F>,
+    #[allow(non_snake_case)]
     check_if_executed_from_PATH: bool
 ) -> Result<()>
 where
@@ -138,19 +139,14 @@ where
     if latest_version != current_version {
         // Determine the confirmation function
         let mut confirm_fn: Box<dyn FnMut(&str) -> bool> = if let Some(mut custom_confirm) = user_confirm {
-            Box::new(move |reply| custom_confirm(reply))
+            Box::new(move |version| custom_confirm(version))
         } else {
             Box::new(default_user_confirm)
         };
 
         // Use the user-provided or default confirmation function
-        print!("A new version {} is available. Would you like to install it? (y/n): ", latest_version);
-        io::stdout().flush().unwrap();
 
-        let mut response = String::new();
-        io::stdin().read_line(&mut response).unwrap();
-
-        if confirm_fn(&response.trim()) {
+        if confirm_fn(&latest_version) {
             // Install the new version (e.g., using cargo install or similar method)
             let mut install_command = {
                 let mut cmd = Command::new("cargo");
@@ -194,7 +190,11 @@ where
 }
 
 // Default confirmation function
-fn default_user_confirm(response: &str) -> bool {
+fn default_user_confirm(version: &str) -> bool {
+    println!("A new version {} is available. Would you like to install it? (y/n): ", version);
+
+    let mut response = String::new();
+    io::stdin().read_line(&mut response).unwrap();
     response.trim().to_lowercase() == "y"
 }
 
