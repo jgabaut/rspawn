@@ -35,7 +35,7 @@ fn main() {
     };
 
     #[allow(non_snake_case)]
-    let check_if_executed_from_PATH = false; // Only ask for update when called from PATH
+    let check_if_executed_from_PATH = true; // Only ask for update when called from PATH
 
     if let Err(e) = relaunch_program(None, Some(custom_confirm), check_if_executed_from_PATH) {
         eprintln!("Error: {}", e);

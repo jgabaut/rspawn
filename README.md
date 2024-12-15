@@ -14,7 +14,6 @@ Similar crates do similar things, but none had the specific mix I needed.
   use std::io;
 
   fn main() {
-      let crate_name = "rspawn";
 
       let custom_confirm = |version: &str| {
           println!("A new version {} is available. Would you like to install it? (yes/n): ", version);
@@ -27,7 +26,7 @@ Similar crates do similar things, but none had the specific mix I needed.
       #[allow(non_snake_case)]
       let check_if_executed_from_PATH = true; // Only ask for update when called from PATH
 
-      if let Err(e) = relaunch_program(crate_name, None, Some(custom_confirm), check_if_executed_from_PATH) {
+      if let Err(e) = relaunch_program(None, Some(custom_confirm), check_if_executed_from_PATH) {
           eprintln!("Error: {}", e);
       }
   }
