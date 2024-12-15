@@ -6,6 +6,9 @@ Similar crates do similar things, but none had the specific mix I needed.
 
 ## Usage
 
+  Run example with `cargo run --example usage`.
+  See [examples/usage.rs](./examples/usage.rs):
+
   ```rust
   use rspawn::relaunch_program;
   use std::io;

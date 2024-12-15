@@ -19,6 +19,8 @@ use std::path::{Path, PathBuf};
 use serde_json::Value;
 use anyhow::{Result, Context}; // For better error handling
 use uuid::Uuid; // For generating unique filenames
+use log::{info, debug, error};
+
 pub const RSPAWN_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 // Function to generate a unique lock file path with a UUID
@@ -37,7 +39,9 @@ impl Drop for LockFileGuard {
     fn drop(&mut self) {
         // Ensure the lock file is removed when the program exits
         if let Err(e) = remove_file(&self.lock_file_path) {
-            eprintln!("Failed to remove lock file: {}", e);
+            let error_msg = format!("Failed to remove lock file: {}", e);
+            eprintln!("{error_msg}");
+            error!("{error_msg}");
         }
     }
 }
@@ -51,7 +55,7 @@ fn get_latest_version_from_crates_io(crate_name: &str) -> Result<String> {
     let url = format!("https://crates.io/api/v1/crates/{}/versions", crate_name);
     let user_agent = format!("rspawn/{RSPAWN_VERSION} (https://github.com/jgabaut/rspawn");
 
-    //eprintln!("Fetching latest version from: {}", url);
+    info!("Fetching latest version from: {}", url);
 
     // Create a client with a User-Agent header
     let client = reqwest::blocking::Client::new();
@@ -62,17 +66,19 @@ fn get_latest_version_from_crates_io(crate_name: &str) -> Result<String> {
         .context("Failed to fetch from crates.io")?;
 
     let status = response.status();
-    //eprintln!("Response status: {}", status);
+    debug!("Response status: {}", status);
 
     if !status.is_success() {
-        return Err(anyhow::anyhow!("Failed to fetch crate info: HTTP {}", status));
+        let error_msg = format!("Failed to fetch crate info: HTTP {}", status);
+        error!("{error_msg}");
+        return Err(anyhow::anyhow!("{error_msg}"));
     }
 
     let body = response.text().context("Failed to read response body")?;
-    //eprintln!("Response body: {}", body);
+    debug!("Response body: {}", body);
 
     let json: Value = serde_json::from_str(&body).context("Failed to parse JSON response")?;
-    //eprintln!("Parsed JSON: {:?}", json);
+    debug!("Parsed JSON: {:?}", json);
 
     let latest_version = json["versions"]
         .as_array()
@@ -192,10 +198,10 @@ where
                 }
             }
         } else {
-            println!("You chose not to update.");
+            info!("You chose not to update.");
         }
     } else {
-        println!("You are already using the latest version.");
+        info!("You are already using the latest version.");
     }
 
     Ok(())
