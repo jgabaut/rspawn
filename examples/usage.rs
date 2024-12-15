@@ -14,8 +14,17 @@
 use rspawn::relaunch_program;
 use std::io;
 
+fn init_logger() {
+    use env_logger::Env;
+
+    // Set up the logger for the binary only
+    env_logger::Builder::from_env(Env::default().default_filter_or("info")).init();
+}
+
 fn main() {
-    let crate_name = "rspawn";
+
+    // Initialize the logger
+    init_logger();
 
     let custom_confirm = |version: &str| {
         println!("A new version {} is available. Would you like to install it? (yes/n): ", version);
@@ -28,7 +37,7 @@ fn main() {
     #[allow(non_snake_case)]
     let check_if_executed_from_PATH = true; // Only ask for update when called from PATH
 
-    if let Err(e) = relaunch_program(crate_name, None, Some(custom_confirm), check_if_executed_from_PATH) {
+    if let Err(e) = relaunch_program(None, Some(custom_confirm), check_if_executed_from_PATH) {
         eprintln!("Error: {}", e);
     }
 }
