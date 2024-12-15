@@ -120,7 +120,7 @@ pub fn is_executed_from_path() -> bool {
 
 /// A builder for configuring and launching a program.
 ///
-/// The `RSpawnBuilder` allows users to configure various options such as
+/// The `RSpawn` allows users to configure various options such as
 /// the crate name, active features, user confirmation logic, and whether
 /// the program should be checked for execution from the PATH before launching.
 ///
@@ -130,7 +130,7 @@ pub fn is_executed_from_path() -> bool {
 ///
 /// # Example
 /// ```
-/// let builder = RSpawnBuilder::new("my_crate")
+/// let builder = RSpawn::new("my_crate")
 ///     .active_features(vec!["feature1".to_string(), "feature2".to_string()])
 ///     .user_confirm(Some(|version| {
 ///         println!("A new version {} is available. Would you like to install it? (y/n): ", version);
@@ -141,7 +141,7 @@ pub fn is_executed_from_path() -> bool {
 ///     .relaunch_program();
 /// ```
 #[allow(non_snake_case)]
-pub struct RSpawnBuilder<F>
+pub struct RSpawn<F>
 where
     F: FnMut(&str) -> bool + 'static,
 {
@@ -151,13 +151,13 @@ where
     check_if_executed_from_PATH: Option<bool>,
 }
 
-impl<F> RSpawnBuilder<F>
+impl<F> RSpawn<F>
 where
     F: FnMut(&str) -> bool + 'static,
 {
     // Create a new builder with default values
     pub fn new() -> Self {
-        RSpawnBuilder {
+        RSpawn {
             crate_name: None,
             active_features: None,
             user_confirm: None,
@@ -189,7 +189,7 @@ where
     ///
     /// # Example
     /// ```
-    /// let builder = RSpawnBuilder::new("my_crate")
+    /// let builder = RSpawn::new("my_crate")
     ///     .features(vec!["feature1".to_string(), "feature2".to_string()]);
     /// ```
     pub fn active_features(mut self, active_features: Vec<String>) -> Self {
@@ -209,7 +209,7 @@ where
     ///
     /// # Example
     /// ```
-    /// let builder = RSpawnBuilder::new("my_crate")
+    /// let builder = RSpawn::new("my_crate")
     ///     .user_confirm(Some(|version| {
     ///         println!("A new version {} is available. Would you like to install it? (y/n): ", version);
     ///         let mut response = String::new();
@@ -236,7 +236,7 @@ where
     ///
     /// # Example
     /// ```
-    /// let builder = RSpawnBuilder::new("my_crate")
+    /// let builder = RSpawn::new("my_crate")
     ///     .active_features(vec!["feature1".to_string(), "feature2".to_string()])
     ///     .user_confirm(Some(|version| {
     ///         println!("A new version {} is available. Would you like to install it? (y/n): ", version);
