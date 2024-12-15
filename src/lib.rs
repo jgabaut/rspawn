@@ -114,6 +114,71 @@ pub fn is_executed_from_path() -> bool {
     false // Executed from a full or relative path
 }
 
+#[allow(non_snake_case)]
+pub struct RSpawnBuilder<F>
+where
+    F: FnMut(&str) -> bool + 'static,
+{
+    crate_name: Option<String>,
+    active_features: Option<Vec<String>>,
+    user_confirm: Option<F>,
+    check_if_executed_from_PATH: Option<bool>,
+}
+
+impl<F> RSpawnBuilder<F>
+where
+    F: FnMut(&str) -> bool + 'static,
+{
+    // Create a new builder with default values
+    pub fn new() -> Self {
+        RSpawnBuilder {
+            crate_name: None,
+            active_features: None,
+            user_confirm: None,
+            #[allow(non_snake_case)]
+            check_if_executed_from_PATH: Some(true),
+        }
+    }
+
+    pub fn crate_name(mut self, crate_name: &str) -> Self {
+        self.crate_name = Some(crate_name.to_string());
+        self
+    }
+
+    pub fn active_features(mut self, active_features: Vec<String>) -> Self {
+        self.active_features = Some(active_features);
+        self
+    }
+
+    pub fn user_confirm(mut self, user_confirm: F) -> Self {
+        self.user_confirm = Some(user_confirm);
+        self
+    }
+
+    #[allow(non_snake_case)]
+    pub fn check_if_executed_from_PATH(mut self, check: bool) -> Self {
+        self.check_if_executed_from_PATH = Some(check);
+        self
+    }
+
+    pub fn build_and_run(self) -> Result<()> {
+        // Use the crate name from the environment if not set explicitly
+        let crate_name = self.crate_name.unwrap_or_else(|| env!("CARGO_PKG_NAME").to_string());
+
+        let active_features = self.active_features.unwrap_or_default();
+        #[allow(non_snake_case)]
+        let check_if_executed_from_PATH = self.check_if_executed_from_PATH.unwrap_or(true);
+
+        let confirm_fn: Box<dyn FnMut(&str) -> bool> = if let Some(mut custom_confirm) = self.user_confirm {
+            Box::new(move |version| custom_confirm(version))
+        } else {
+            Box::new(default_user_confirm)
+        };
+
+        relaunch_program(&crate_name, Some(active_features), Some(confirm_fn), check_if_executed_from_PATH)
+    }
+}
+
 // Type alias for the user-defined confirmation function
 pub type UserInputConfirmFn = Box<dyn FnMut(&str) -> bool>;
 
