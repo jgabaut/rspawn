@@ -19,6 +19,7 @@ use std::path::{Path, PathBuf};
 use serde_json::Value;
 use anyhow::{Result, Context}; // For better error handling
 use uuid::Uuid; // For generating unique filenames
+pub const RSPAWN_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 // Function to generate a unique lock file path with a UUID
 fn generate_lock_file_path() -> PathBuf {
@@ -48,6 +49,7 @@ fn create_lock_file(lock_file_path: &Path) -> io::Result<()> {
 
 fn get_latest_version_from_crates_io(crate_name: &str) -> Result<String> {
     let url = format!("https://crates.io/api/v1/crates/{}/versions", crate_name);
+    let user_agent = format!("rspawn/{RSPAWN_VERSION} (https://github.com/jgabaut/rspawn");
 
     //eprintln!("Fetching latest version from: {}", url);
 
@@ -55,7 +57,7 @@ fn get_latest_version_from_crates_io(crate_name: &str) -> Result<String> {
     let client = reqwest::blocking::Client::new();
     let response = client
         .get(&url)
-        .header("User-Agent", "rspawn/0.1.0 (https://github.com/jgabaut/rspawn)")
+        .header("User-Agent", user_agent)
         .send()
         .context("Failed to fetch from crates.io")?;
 
