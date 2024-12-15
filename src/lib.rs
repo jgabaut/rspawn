@@ -118,15 +118,15 @@ pub fn is_executed_from_path() -> bool {
     false // Executed from a full or relative path
 }
 
-/// A builder for configuring and launching a program.
+/// A builder for configuring an update query.
 ///
 /// The `RSpawn` allows users to configure various options such as
-/// the crate name, active features, user confirmation logic, and whether
-/// the program should be checked for execution from the PATH before launching.
+/// active features, user confirmation logic, and whether the program
+/// should be checked for execution from the PATH before launching.
 ///
 /// This builder pattern ensures that all configuration options are provided
 /// before launching the program. Once the builder is fully configured,
-/// the `relaunch_program` function can be called to actually execute the program.
+/// the `relaunch_program` function can be called to actually start the update query.
 ///
 /// # Example
 /// ```
@@ -217,10 +217,11 @@ where
         self
     }
 
-    /// Executes the program with the configured options.
+    /// Run update query with the configured options.
     ///
-    /// This method launches the program, checking for the active features, user
-    /// confirmation, and whether the program should be executed from the PATH.
+    /// This method queries crates.io for latest version and installs it with
+    /// cargo after checking for the active features, user confirmation,
+    /// and whether the program should be executed from the PATH.
     ///
     /// # Example
     /// ```
@@ -239,7 +240,7 @@ where
     ///
     /// # Returns
     /// * `Result<(), SomeError>` - A `Result` indicating whether the program was
-    ///   successfully launched or if an error occurred.
+    ///   successfully updated or if an error occurred.
     pub fn relaunch_program(self) -> Result<()> {
 
         let active_features = self.active_features.unwrap_or_default();
@@ -259,6 +260,29 @@ where
 // Type alias for the user-defined confirmation function
 pub type UserInputConfirmFn = Box<dyn FnMut(&str) -> bool>;
 
+/// Run update query with the configured options.
+///
+/// This method queries crates.io for latest version and installs it with
+/// cargo after checking for the active features, user confirmation,
+/// and whether the program should be executed from the PATH.
+///
+/// # Example
+/// ```
+/// let active_features = vec!["feature1".to_string(), "feature2".to_string()];
+/// let user_confirm = |version: &str| {
+///     println!("A new version {} is available. Would you like to install it? (yes/n): ", version);
+///     let mut response = String::new();
+///     io::stdin().read_line(&mut response).unwrap();
+///     response.trim().to_lowercase() == "yes"
+/// };
+/// let check_if_executed_from_PATH = false;
+/// let res = relaunch_program(Some(active_features), Some(user_confirm),
+/// check_if_executed_from_PATH);
+/// ```
+///
+/// # Returns
+/// * `Result<(), SomeError>` - A `Result` indicating whether the program was
+///   successfully updated or if an error occurred.
 pub fn relaunch_program<F>(
     active_features: Option<Vec<String>>,
     user_confirm: Option<F>,
