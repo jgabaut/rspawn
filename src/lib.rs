@@ -21,6 +21,7 @@ use anyhow::{Result, Context}; // For better error handling
 use uuid::Uuid; // For generating unique filenames
 use log::{info, debug, error};
 
+/// Current rspawn version.
 pub const RSPAWN_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 // Function to generate a unique lock file path with a UUID
@@ -256,9 +257,6 @@ where
         relaunch_program(Some(active_features), Some(confirm_fn), check_if_executed_from_PATH)
     }
 }
-
-// Type alias for the user-defined confirmation function
-pub type UserInputConfirmFn = Box<dyn FnMut(&str) -> bool>;
 
 /// Run update query with the configured options.
 ///
