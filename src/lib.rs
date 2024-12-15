@@ -31,7 +31,7 @@ fn generate_lock_file_path() -> PathBuf {
 }
 
 // Struct to handle lock file cleanup when the program exits
-pub struct LockFileGuard {
+struct LockFileGuard {
     lock_file_path: PathBuf,
 }
 
