@@ -55,7 +55,7 @@ fn get_latest_version_from_crates_io(crate_name: &str) -> Result<String> {
     let url = format!("https://crates.io/api/v1/crates/{}/versions", crate_name);
     let user_agent = format!("rspawn/{RSPAWN_VERSION} (https://github.com/jgabaut/rspawn");
 
-    info!("Fetching latest version from: {}", url);
+    info!("Fetching latest version for {} from: {}", crate_name, url);
 
     // Create a client with a User-Agent header
     let client = reqwest::blocking::Client::new();
@@ -130,7 +130,7 @@ pub fn is_executed_from_path() -> bool {
 ///
 /// # Example
 /// ```
-/// let builder = RSpawn::new("my_crate")
+/// let builder = RSpawn::new()
 ///     .active_features(vec!["feature1".to_string(), "feature2".to_string()])
 ///     .user_confirm(Some(|version| {
 ///         println!("A new version {} is available. Would you like to install it? (y/n): ", version);
@@ -145,7 +145,6 @@ pub struct RSpawn<F>
 where
     F: FnMut(&str) -> bool + 'static,
 {
-    crate_name: Option<String>,
     active_features: Option<Vec<String>>,
     user_confirm: Option<F>,
     check_if_executed_from_PATH: Option<bool>,
@@ -158,22 +157,11 @@ where
     // Create a new builder with default values
     pub fn new() -> Self {
         RSpawn {
-            crate_name: None,
             active_features: None,
             user_confirm: None,
             #[allow(non_snake_case)]
             check_if_executed_from_PATH: Some(true),
         }
-    }
-
-    /// Set user-defined crate name to use in the request to crates.io.
-    /// Default: env!(CARGO_PKG_NAME).to_string()
-    ///
-    /// # Arguments
-    /// * `crate_name` - Crate name to use.
-    pub fn crate_name(mut self, crate_name: &str) -> Self {
-        self.crate_name = Some(crate_name.to_string());
-        self
     }
 
     /// Sets the active features for the program.
@@ -189,7 +177,7 @@ where
     ///
     /// # Example
     /// ```
-    /// let builder = RSpawn::new("my_crate")
+    /// let builder = RSpawn::new()
     ///     .features(vec!["feature1".to_string(), "feature2".to_string()]);
     /// ```
     pub fn active_features(mut self, active_features: Vec<String>) -> Self {
@@ -209,7 +197,7 @@ where
     ///
     /// # Example
     /// ```
-    /// let builder = RSpawn::new("my_crate")
+    /// let builder = RSpawn::new()
     ///     .user_confirm(Some(|version| {
     ///         println!("A new version {} is available. Would you like to install it? (y/n): ", version);
     ///         let mut response = String::new();
@@ -236,7 +224,7 @@ where
     ///
     /// # Example
     /// ```
-    /// let builder = RSpawn::new("my_crate")
+    /// let builder = RSpawn::new()
     ///     .active_features(vec!["feature1".to_string(), "feature2".to_string()])
     ///     .user_confirm(Some(|version| {
     ///         println!("A new version {} is available. Would you like to install it? (y/n): ", version);
@@ -253,8 +241,6 @@ where
     /// * `Result<(), SomeError>` - A `Result` indicating whether the program was
     ///   successfully launched or if an error occurred.
     pub fn relaunch_program(self) -> Result<()> {
-        // Use the crate name from the environment if not set explicitly
-        let crate_name = self.crate_name.unwrap_or_else(|| env!("CARGO_PKG_NAME").to_string());
 
         let active_features = self.active_features.unwrap_or_default();
         #[allow(non_snake_case)]
@@ -266,7 +252,7 @@ where
             Box::new(default_user_confirm)
         };
 
-        relaunch_program(&crate_name, Some(active_features), Some(confirm_fn), check_if_executed_from_PATH)
+        relaunch_program(Some(active_features), Some(confirm_fn), check_if_executed_from_PATH)
     }
 }
 
@@ -274,7 +260,6 @@ where
 pub type UserInputConfirmFn = Box<dyn FnMut(&str) -> bool>;
 
 pub fn relaunch_program<F>(
-    crate_name: &str,
     active_features: Option<Vec<String>>,
     user_confirm: Option<F>,
     #[allow(non_snake_case)]
@@ -304,8 +289,9 @@ where
         return Err(anyhow::anyhow!("Program must be executed from PATH, not from a full or relative path.").into());
     }
 
+    let crate_name = env!("CARGO_PKG_NAME").to_string();
     // Get the latest version from crates.io
-    let latest_version = get_latest_version_from_crates_io(crate_name).context("Failed to get latest version")?;
+    let latest_version = get_latest_version_from_crates_io(&crate_name).context("Failed to get latest version")?;
 
     // Get the current version of the program
     let current_version = env!("CARGO_PKG_VERSION"); // This gets the version from Cargo.toml at build time
