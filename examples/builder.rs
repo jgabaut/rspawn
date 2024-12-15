@@ -11,7 +11,7 @@
  *  You should have received a copy of the GNU General Public License
  *  along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
-use rspawn::RSpawnBuilder;
+use rspawn::RSpawn;
 use std::io;
 
 fn init_logger() {
@@ -36,7 +36,7 @@ fn main() {
 
     #[allow(non_snake_case)]
     let check_if_executed_from_PATH = false; // Only ask for update when called from PATH
-    if let Err(e) = RSpawnBuilder::new()
+    if let Err(e) = RSpawn::new()
         .check_if_executed_from_PATH(check_if_executed_from_PATH)
         .user_confirm(custom_confirm)
         .relaunch_program() {
