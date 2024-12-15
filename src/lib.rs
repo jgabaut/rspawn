@@ -89,6 +89,10 @@ fn get_latest_version_from_crates_io(crate_name: &str) -> Result<String> {
     Ok(latest_version.to_string())
 }
 
+/// This function checks if the program is executed from the PATH or a full/relative path.
+///
+/// # Returns
+/// * `true` if the program is executed from the PATH, `false` otherwise.
 pub fn is_executed_from_path() -> bool {
     let exe_path = env::current_exe().unwrap_or_else(|_| PathBuf::new());
 
@@ -114,6 +118,28 @@ pub fn is_executed_from_path() -> bool {
     false // Executed from a full or relative path
 }
 
+/// A builder for configuring and launching a program.
+///
+/// The `RSpawnBuilder` allows users to configure various options such as
+/// the crate name, active features, user confirmation logic, and whether
+/// the program should be checked for execution from the PATH before launching.
+///
+/// This builder pattern ensures that all configuration options are provided
+/// before launching the program. Once the builder is fully configured,
+/// the `relaunch_program` function can be called to actually execute the program.
+///
+/// # Example
+/// ```
+/// let builder = RSpawnBuilder::new("my_crate")
+///     .active_features(vec!["feature1".to_string(), "feature2".to_string()])
+///     .user_confirm(Some(|version| {
+///         println!("A new version {} is available. Would you like to install it? (y/n): ", version);
+///         let mut response = String::new();
+///         io::stdin().read_line(&mut response).unwrap();
+///         response.trim().to_lowercase() == "y"
+///     }))
+///     .relaunch_program();
+/// ```
 #[allow(non_snake_case)]
 pub struct RSpawnBuilder<F>
 where
@@ -140,16 +166,58 @@ where
         }
     }
 
+    /// Set user-defined crate name to use in the request to crates.io.
+    /// Default: env!(CARGO_PKG_NAME).to_string()
+    ///
+    /// # Arguments
+    /// * `crate_name` - Crate name to use.
     pub fn crate_name(mut self, crate_name: &str) -> Self {
         self.crate_name = Some(crate_name.to_string());
         self
     }
 
+    /// Sets the active features for the program.
+    ///
+    /// This method allows users to specify which features should be enabled
+    /// when launching the program. If no features are provided, the default
+    /// value of `None` will be used, which means no special features will
+    /// be enabled.
+    ///
+    /// # Arguments
+    /// * `active_features` - A vector of strings representing the names of features
+    ///   to be enabled when launching the program.
+    ///
+    /// # Example
+    /// ```
+    /// let builder = RSpawnBuilder::new("my_crate")
+    ///     .features(vec!["feature1".to_string(), "feature2".to_string()]);
+    /// ```
     pub fn active_features(mut self, active_features: Vec<String>) -> Self {
         self.active_features = Some(active_features);
         self
     }
 
+    /// Sets a custom user confirmation function.
+    ///
+    /// This method allows users to provide their own confirmation logic. The
+    /// function will be called during the process, and should return `true`
+    /// if the program should continue, or `false` if the operation should be aborted.
+    ///
+    /// # Arguments
+    /// * `user_confirm` - Optional closure or function that takes a message and returns
+    ///   a boolean indicating whether the operation should proceed.
+    ///
+    /// # Example
+    /// ```
+    /// let builder = RSpawnBuilder::new("my_crate")
+    ///     .user_confirm(Some(|version| {
+    ///         println!("A new version {} is available. Would you like to install it? (y/n): ", version);
+    ///         let mut response = String::new();
+    ///         io::stdin().read_line(&mut response).unwrap();
+    ///         response.trim().to_lowercase() == "y"
+    ///         true
+    ///     }));
+    /// ```
     pub fn user_confirm(mut self, user_confirm: F) -> Self {
         self.user_confirm = Some(user_confirm);
         self
@@ -161,7 +229,30 @@ where
         self
     }
 
-    pub fn build_and_run(self) -> Result<()> {
+    /// Executes the program with the configured options.
+    ///
+    /// This method launches the program, checking for the active features, user
+    /// confirmation, and whether the program should be executed from the PATH.
+    ///
+    /// # Example
+    /// ```
+    /// let builder = RSpawnBuilder::new("my_crate")
+    ///     .active_features(vec!["feature1".to_string(), "feature2".to_string()])
+    ///     .user_confirm(Some(|version| {
+    ///         println!("A new version {} is available. Would you like to install it? (y/n): ", version);
+    ///         let mut response = String::new();
+    ///         io::stdin().read_line(&mut response).unwrap();
+    ///         response.trim().to_lowercase() == "y"
+    ///         true
+    ///     }));
+    ///
+    /// builder.relaunch_program().expect("Failed to launch program");
+    /// ```
+    ///
+    /// # Returns
+    /// * `Result<(), SomeError>` - A `Result` indicating whether the program was
+    ///   successfully launched or if an error occurred.
+    pub fn relaunch_program(self) -> Result<()> {
         // Use the crate name from the environment if not set explicitly
         let crate_name = self.crate_name.unwrap_or_else(|| env!("CARGO_PKG_NAME").to_string());
 

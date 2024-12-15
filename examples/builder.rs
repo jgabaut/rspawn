@@ -39,7 +39,7 @@ fn main() {
     if let Err(e) = RSpawnBuilder::new()
         .check_if_executed_from_PATH(check_if_executed_from_PATH)
         .user_confirm(custom_confirm)
-        .build_and_run() {
+        .relaunch_program() {
         eprintln!("Error: {}", e);
     }
 }
